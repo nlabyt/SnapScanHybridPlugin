@@ -3,6 +3,7 @@ package com.example.plugin;
 // cordova
 import org.apache.cordova.*;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import org.json.JSONException;
 
 // Android
@@ -53,7 +54,8 @@ public class Hello extends CordovaPlugin {
 		if (action.equals("greet")) {
 			String name = data.getString(0);
 			String message = "Hello, " + name;
-			callbackContext.success(message);
+			this.createCallback(message , true);
+			//callbackContext.success(message);
 			return true;
 		}
 		// test if the required action refers to the 'search' method
@@ -66,9 +68,18 @@ public class Hello extends CordovaPlugin {
 			this.Scan();
 			return true;
 		}
+
+
+
+
 		// no action matches, return error
 		return false;
 	}
+	private void createCallback(String info, boolean keepCallback){
+		PluginResult result = new PluginResult(PluginResult.Status.OK, info);
+            result.setKeepCallback(keepCallback);
+            this.callbackContext.sendPluginResult(result);
+    }
 	public void setupBroadcastManager(){
 		// if activity and received have not been created yet, create them
 		if(activity == null || broadcastReceiver == null){
@@ -113,7 +124,7 @@ public class Hello extends CordovaPlugin {
 		SSDeviceScanSettings m_scanSetting = new SSDeviceScanSettings();
 		m_scanSetting.setSaveFolderPath(OUTPUT_PATH); // Set image destination path
 		// Get the connected device
-		device = (PFUSSDevice)m_mng.getConnectedDevice();
+		//device = (PFUSSDevice)m_mng.getConnectedDevice();
 		// Start scan process
 		if(device != null){
 			device.beginScanSession();
