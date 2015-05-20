@@ -27,9 +27,10 @@ import com.fujitsu.pfu.mobile.device.SSDeviceScanSettings;
 import com.fujitsu.pfu.mobile.device.SSNotification;
 import com.fujitsu.pfu.mobile.device.SSDeviceError;
 
-
+import android.util.Log;
 
 public class Hello extends CordovaPlugin {
+    private static final String LOG_TAG = "SnapScanPlugin";
 
 	private Context app_context = null;
 	private Activity activity = null;
@@ -43,35 +44,49 @@ public class Hello extends CordovaPlugin {
 	private static final String DEVICE_PASSWORD = "1234";
 	private PFUDeviceManager pfuDeviceManager;
 	private PFUSSDevice device = null;
-
+	
+	private Context getApplicationContext() {
+		return this.cordova.getActivity().getApplicationContext();
+	}
+	private String convertIntToString(int i){
+		return Integer.toString(i);
+	}
 	@Override
-	public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
+	public boolean execute(String action, String data, CallbackContext callbackContext) throws JSONException {
 		this.callbackContext = callbackContext;
-
+      	Log.v(LOG_TAG, "Init Test Logs");
 		setupBroadcastManager();
 
+		final String myTransportedDatas = data;
 
 		if (action.equals("greet")) {
-			String name = data.getString(0);
-			String message = "Hello, " + name;
-			this.createCallback(message , true);
-			//callbackContext.success(message);
-			return true;
+            cordova.getThreadPool().execute(new Runnable() {
+            	String datas = myTransportedDatas;
+                public void run() {
+					String message = "Hello, " + datas;
+					createCallback(message , true);
+                }
+            });
+            return true;
 		}
 		// test if the required action refers to the 'search' method
 		if (action.equals("search")){
-			this.Search();
-			return true;
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+					Search();
+                }
+            });
+            return true;
 		}
 		// test if the required action refers to the 'scan' method
 		if (action.equals("scan")){
-			this.Scan();
-			return true;
+            cordova.getThreadPool().execute(new Runnable() {
+                public void run() {
+					Scan();
+				}
+            });
+            return true;
 		}
-
-
-
-
 		// no action matches, return error
 		return false;
 	}
@@ -83,7 +98,7 @@ public class Hello extends CordovaPlugin {
 	public void setupBroadcastManager(){
 		// if activity and received have not been created yet, create them
 		if(activity == null || broadcastReceiver == null){
-			app_context = this.cordova.getActivity().getApplicationContext();
+			app_context = this.getApplicationContext();
 			// Get the main activity
 			activity = this.cordova.getActivity();
 			// Use the local broadcast manager
@@ -101,8 +116,15 @@ public class Hello extends CordovaPlugin {
 	{
 		// Create specific a device manager
 		pfuDeviceManager = PFUDeviceManager.getDeviceManagerWithType(PFUSSDeviceManager.class, PFUSSDeviceManager.PFUDEVICETYPE_SCANSNAP, app_context);
+		
+
 		// Search for available devices
 		PFUDeviceError devError = pfuDeviceManager.searchForDevices(PFUDeviceManager.PFUSCANSNAP_ALL);
+		int errorCode = devError.getErrorCode();
+
+		Log.v(LOG_TAG, "Search:: errorCode searchForDevices");
+		Log.v(LOG_TAG, this.convertIntToString(errorCode));
+
 	}
 	private void onPFUDeviceConnect()
 	{
@@ -124,12 +146,15 @@ public class Hello extends CordovaPlugin {
 		SSDeviceScanSettings m_scanSetting = new SSDeviceScanSettings();
 		m_scanSetting.setSaveFolderPath(OUTPUT_PATH); // Set image destination path
 		// Get the connected device
-		//device = (PFUSSDevice)m_mng.getConnectedDevice();
+		device = (PFUSSDevice)pfuDeviceManager.getConnectedDevice();
 		// Start scan process
 		if(device != null){
 			device.beginScanSession();
 			device.scanDocuments(m_scanSetting);
-			callbackContext.success("Scan command sent.");
+			this.createCallback("Scan command sent." , true);
+			//callbackContext.success("Scan command sent.");
+		} else {
+			Log.v(LOG_TAG, "Scan:: device is null -> no scan, no callback");
 		}
 	}
 	//end class
