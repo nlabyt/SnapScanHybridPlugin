@@ -138,6 +138,34 @@ public class Hello extends CordovaPlugin {
 			device.setPassword(DEVICE_PASSWORD);
 			// Connect to the device
 			PFUDeviceError devErr = device.connect();
+			// logs
+			int errorCode = devErr.getErrorCode();
+			Log.v(LOG_TAG, "onPFUDeviceConnect:: errorCode conect");
+			Log.v(LOG_TAG, this.convertIntToString(errorCode));
+			// Create and setup scan settings
+			SSDeviceScanSettings m_scanSetting = new SSDeviceScanSettings();
+			m_scanSetting.setSaveFolderPath(OUTPUT_PATH); // Set image destination path
+			// Get the connected device
+			//device = (PFUSSDevice)pfuDeviceManager.getConnectedDevice();
+			// Start scan process
+			if(device != null){
+				devErr = device.beginScanSession();
+				errorCode = devErr.getErrorCode();
+				
+				Log.v(LOG_TAG, "Scan:: errorCode is beginScanSession");
+				Log.v(LOG_TAG, this.convertIntToString(errorCode));
+
+				devErr = device.scanDocuments(m_scanSetting);
+				errorCode = devErr.getErrorCode();
+
+				Log.v(LOG_TAG, "Scan:: errorCode is beginScanSession");
+				Log.v(LOG_TAG, this.convertIntToString(errorCode));
+
+				this.createCallback("Scan command sent." , true);
+				//callbackContext.success("Scan command sent.");
+			} else {
+				Log.v(LOG_TAG, "Scan:: device is null -> no scan, no callback");
+			}
 		}
 	}
 	private void Scan()
@@ -148,9 +176,20 @@ public class Hello extends CordovaPlugin {
 		// Get the connected device
 		device = (PFUSSDevice)pfuDeviceManager.getConnectedDevice();
 		// Start scan process
+		
 		if(device != null){
-			device.beginScanSession();
-			device.scanDocuments(m_scanSetting);
+			PFUDeviceError devErr = device.beginScanSession();
+			int errorCode = devErr.getErrorCode();
+			
+			Log.v(LOG_TAG, "Scan:: errorCode is beginScanSession");
+			Log.v(LOG_TAG, this.convertIntToString(errorCode));
+
+			devErr = device.scanDocuments(m_scanSetting);
+			errorCode = devErr.getErrorCode();
+
+			Log.v(LOG_TAG, "Scan:: errorCode is beginScanSession");
+			Log.v(LOG_TAG, this.convertIntToString(errorCode));
+
 			this.createCallback("Scan command sent." , true);
 			//callbackContext.success("Scan command sent.");
 		} else {
