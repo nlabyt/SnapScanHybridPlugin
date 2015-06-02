@@ -339,20 +339,29 @@ public class Hello extends CordovaPlugin {
 			// callback for finish scan action
 			// PDF
 			if(intent.getAction().equals(SSNotification.ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF)) {
-			  	// Get the pdf path
-			  	String pdfPath = intent.getStringExtra(SSNotification.EXTRA_DATA_SS_DEVICE_DID_FINISH_MAKE_PDF);
-				Log.v(LOG_TAG, "Scan:: scan in pdf is finish, path of file :");
-				Log.v(LOG_TAG, pdfPath);
-			  	
-				// fire callback if param is pdf
+				// check if broadcast is in use
 				String status = "";
 				try {
 					status = args.getString("type");
 				} catch (Exception e) {
 					Log.e(LOG_TAG, "Unable to get params in ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF");
 				}
-				// check if send
+
 				if (status.equals("pdf")){ // set recto/verso
+
+				  	String pdfPath = intent.getStringExtra(SSNotification.EXTRA_DATA_SS_DEVICE_DID_FINISH_MAKE_PDF);
+					Log.v(LOG_TAG, "Scan:: scan in pdf is finish, path of file :");
+					Log.v(LOG_TAG, pdfPath);
+				  	
+					// prepare return object
+				  	JSONObject returnObject = new JSONObject();
+				  	try { // wanted.
+						returnObject.put("frontPage", pdfPath);
+					} catch (JSONException e) {
+						Log.v(LOG_TAG, "SCAN : JSON CREATE OBJECT EXCEPTION");
+					    e.printStackTrace();
+					}
+					// callback
 					Log.v (LOG_TAG, "BROADCAST : PDF FORMAT" + status);
 				  	// only for the pdf result test the send the broadcast end scan
 					PluginResult result = new PluginResult(PluginResult.Status.OK, pdfPath);
@@ -363,43 +372,41 @@ public class Hello extends CordovaPlugin {
 			}
 			// JPEG
 			if(intent.getAction().equals(SSNotification.ACTION_SS_DEVICE_DID_SCAN_PAGE)) {
-			  	SSDevicePageInfo information = (SSDevicePageInfo)intent.getSerializableExtra(SSNotification.EXTRA_DATA_SS_DEVICE_DID_SCAN_PAGE);
-
-			  	String frontJPEGPath = information.getFilePathFront();
-			  	// If duplex...
-			  	String backJPEGPath = information.getFilePathBack();
-
-				Log.v(LOG_TAG, "Scan:: scan in JPEG is finish, path of file 1 et 2 :");
-				Log.v(LOG_TAG, "Scan:: frontJPEGPath : "+frontJPEGPath);
-				Log.v(LOG_TAG, "Scan:: backJPEGPath : "+backJPEGPath);
-
-				// prepare return object
-			  	JSONObject returnObject = new JSONObject();
-			  	try { // wanted.
-					returnObject.put("frontPage", frontJPEGPath);
-					returnObject.put("backPage", backJPEGPath);
-				} catch (JSONException e) {
-					Log.v(LOG_TAG, "SCAN : JSON CREATE OBJECT EXCEPTION");
-				    e.printStackTrace();
-				}
-				
-				// fire callback if param is jpeg
 				String status = "";
 				try {
 					status = args.getString("type");
 				} catch (Exception e) {
 					Log.e(LOG_TAG, "Unable to get params in ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF");
 				}
-				// check if send
+				// check if broadcast is in use
 				if (status.equals("jpeg") || status.equals("jpg")){ // set recto/verso
+
+				  	SSDevicePageInfo information = (SSDevicePageInfo)intent.getSerializableExtra(SSNotification.EXTRA_DATA_SS_DEVICE_DID_SCAN_PAGE);
+
+				  	String frontJPEGPath = information.getFilePathFront();
+				  	// If duplex...
+				  	String backJPEGPath = information.getFilePathBack();
+
+					Log.v(LOG_TAG, "Scan:: scan in JPEG is finish, path of file 1 et 2 :");
+					Log.v(LOG_TAG, "Scan:: frontJPEGPath : "+frontJPEGPath);
+					Log.v(LOG_TAG, "Scan:: backJPEGPath : "+backJPEGPath);
+
+					// prepare return object
+				  	JSONObject returnObject = new JSONObject();
+				  	try { // wanted.
+						returnObject.put("frontPage", frontJPEGPath);
+						returnObject.put("backPage", backJPEGPath);
+					} catch (JSONException e) {
+						Log.v(LOG_TAG, "SCAN : JSON CREATE OBJECT EXCEPTION");
+					    e.printStackTrace();
+					}
+
 					Log.v (LOG_TAG, "BROADCAST : JPEG FORMAT" + status);
 					// return final object with filesPath
 					PluginResult result = new PluginResult(PluginResult.Status.OK, returnObject);
 	    			result.setKeepCallback(false);
 	    			callbackContext.sendPluginResult(result);
 				}
-
-
 
 			}
 
