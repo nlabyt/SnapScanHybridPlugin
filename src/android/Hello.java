@@ -61,15 +61,14 @@ public class Hello extends CordovaPlugin {
 		this.callbackContext = callbackContext;
 		Log.v(LOG_TAG, "Init Tests Logs entry datas : " + data.toString());
 
+		JSONObject parameters = null;
 		try {
-			JSONObject parameters = data.getJSONObject(0);
+			parameters = data.getJSONObject(0);
 		} catch (Exception e) {
 			Log.e(LOG_TAG, "Unable to get params");
 		}
-		JSONObject parameters = data.getJSONObject(0);
 		// setup global broadcast
 		setupBroadcastManager(parameters);
-
 
 
       	Log.v(LOG_TAG, "parameters entry : " + parameters.toString());
@@ -364,7 +363,7 @@ public class Hello extends CordovaPlugin {
 					// callback
 					Log.v (LOG_TAG, "BROADCAST : PDF FORMAT" + status);
 				  	// only for the pdf result test the send the broadcast end scan
-					PluginResult result = new PluginResult(PluginResult.Status.OK, pdfPath);
+					PluginResult result = new PluginResult(PluginResult.Status.OK, returnObject);
 	    			result.setKeepCallback(false);
 	    			callbackContext.sendPluginResult(result);
 				}
