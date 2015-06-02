@@ -17,7 +17,6 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import java.util.ArrayList;
 //PFU ScanSnap SDK classes
-//import com.fujitsu.pfu.mobile.device.ScanSnapSettings;
 
 import com.fujitsu.pfu.mobile.device.PFUDevice;
 import com.fujitsu.pfu.mobile.device.PFUDeviceError;
@@ -46,30 +45,46 @@ public class Hello extends CordovaPlugin {
 	private BroadcastReceiver broadcastReceiver = null;
 
 
-	//private static final int FILE_FORMAT = 0; (0 is jpeg 1 is pdf)
+	//private static final int FILE_FORMAT = 0; (0 is jpeg 1 is pdf) always return a jpg path file ?
 	private static final int FILE_FORMAT = 1;
 	private static final String OUTPUT_PATH = "/mnt/sdcard/scansnap";
 	private static final String DEVICE_PASSWORD = "2155";
 	private PFUDeviceManager pfuDeviceManager;
 	private PFUSSDevice device = null;
-	public String scan_action = "single";
 
 	private String convertIntToString(int i){
 		return Integer.toString(i);
 	}
 
 	@Override
-	public boolean execute(String action, String data, CallbackContext callbackContext) throws JSONException {
+	public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
 		this.callbackContext = callbackContext;
-      	Log.v(LOG_TAG, "Init Test Logs datas : " + data);
-		setupBroadcastManager();
+		Log.v(LOG_TAG, "Init Tests Logs entry datas : " + data.toString());
 
-		final String myTransportedDatas = data.replaceAll("\\W",""); // clean string ( very quick fix to del ["..."] )
-      	Log.v(LOG_TAG, "myTransportedDatas : " + myTransportedDatas);
+		try {
+			JSONObject parameters = data.getJSONObject(0);
+		} catch (Exception e) {
+			Log.e(LOG_TAG, "Unable to get params");
+		}
+		JSONObject parameters = data.getJSONObject(0);
+		// setup global broadcast
+		setupBroadcastManager(parameters);
 
-		if (action.equals("greet")) {
+
+
+      	Log.v(LOG_TAG, "parameters entry : " + parameters.toString());
+
+		String status = parameters.getString("multipages");
+		Log.v (LOG_TAG, "init status Param : " + status);
+
+
+      	// transport the data
+		final JSONObject myTransportedDatas = parameters; // transport directly in..
+
+		// dispath actions
+		if (action.equals("greet")) { // simple hello world
             cordova.getActivity().runOnUiThread(new Runnable() {
-            	String datas = new String(myTransportedDatas);
+            	JSONObject datas = myTransportedDatas;
                 public void run() {
 					String message = "Hello, " + datas;
 
@@ -79,10 +94,11 @@ public class Hello extends CordovaPlugin {
             return true;
 		}
 		// test if the required action refers to the 'search' method
-		if (action.equals("search")){
+		if (action.equals("search")){	// entry function full process
             cordova.getActivity().runOnUiThread(new Runnable() {
+				JSONObject datas = myTransportedDatas;
                 public void run() {
-					Search();
+					Search(); // Search(datas);
                 }
             });
             return true;
@@ -90,15 +106,35 @@ public class Hello extends CordovaPlugin {
 		// test if the required action refers to the 'scan' method
 		if (action.equals("scan")){
             cordova.getActivity().runOnUiThread(new Runnable() {
-				String datas = myTransportedDatas;
+				JSONObject datas = myTransportedDatas;
                 public void run() {
 					Scan(datas); // single or double page
 				}
             });
             return true;
 		}
+		// test if the required action refers to the 'scan' method
+		if (action.equals("fullaction")){
+            cordova.getActivity().runOnUiThread(new Runnable() {
+				JSONObject datas = myTransportedDatas;
+                public void run() {
+					Fullaction(); // single or double page
+				}
+            });
+            return true;
+		}
 		// no action matches, return error
 		return false;
+	}
+	public void listMethods(){
+
+				JSONArray t = new JSONArray();
+
+		Class tClass = t.getClass();
+		Method[] methods = tClass.getMethods();
+		for (int i = 0; i < methods.length; i++) {
+			System.out.println("public method: " + methods[i]);
+		}
 	}
 	public void createCallback(String info, boolean keepCallback, boolean success){
 		PluginResult result = null;
@@ -110,7 +146,7 @@ public class Hello extends CordovaPlugin {
         result.setKeepCallback(keepCallback);
         this.callbackContext.sendPluginResult(result);
     }
-	public void setupBroadcastManager(){
+	public void setupBroadcastManager(JSONObject args){
 		// if activity and received have not been created yet, create them
 		if(activity == null || broadcastReceiver == null){
 			// Get the main activity
@@ -130,16 +166,15 @@ public class Hello extends CordovaPlugin {
 			intentfilter.addAction(SSNotification.EXTRA_DATA_SS_DEVICE_DID_SCAN_PAGE);
 
 			// Create and connect a new broadcast receiver
-			broadcastReceiver = new MyBroadcastReceiver();
+			broadcastReceiver = new MyBroadcastReceiver(args);
 			localBroadcastManager.registerReceiver(broadcastReceiver, intentfilter);
 		}
 	}
 	private void Search()
 	{
-		device = null; // reset the device for sure remake all processus
+		device = null; // reset the device for sure remake all search processus
 		// Create specific a device manager
 		pfuDeviceManager = PFUDeviceManager.getDeviceManagerWithType(PFUSSDeviceManager.class, PFUSSDeviceManager.PFUDEVICETYPE_SCANSNAP, app_context);
-		
 
 		// Search for available devices
 		PFUDeviceError devError = pfuDeviceManager.searchForDevices(PFUDeviceManager.PFUSCANSNAP_ALL);
@@ -152,8 +187,11 @@ public class Hello extends CordovaPlugin {
 		Log.v(LOG_TAG, "Search:: errorCode searchForDevices");
 		Log.v(LOG_TAG, this.convertIntToString(errorCode));
 		//this.createCallback("Search is begin " , true, true);
-
 	}
+	private void Fullaction(){
+		//Search(datas);
+	}
+	
 	private void onPFUDeviceConnect()
 	{
 		// Get list of available devices
@@ -177,26 +215,50 @@ public class Hello extends CordovaPlugin {
     			result.setKeepCallback(true);
     			callbackContext.sendPluginResult(result);
 			}
-			//String name = device.getDeviceName();
-			//Log.v(LOG_TAG, "Scan:: onPFUDeviceConnect:: "+name+" is connected ! ");
-			
-
 			//this.createCallback(name+" is connected ! " , true, true);
-
 		}
 	}
-	public void Scan(String status)
+	public void Scan(JSONObject args)
 	{
-		Log.v (LOG_TAG, "Scan Entry Param : " + status);
-
 		// Create and setup scan settings
 		SSDeviceScanSettings m_scanSetting = new SSDeviceScanSettings();
-		m_scanSetting.setFileFormat(FILE_FORMAT);
+
+		// choose pdf or jpeg format
+		String status = "";
+		try {
+			status = args.getString("type");
+		} catch (Exception e) {
+			Log.e(LOG_TAG, "Unable to get params in ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF");
+		}
+		// check if send
+		if (status.equals("jpeg") || status.equals("jpg")){ // set recto/verso
+			Log.i(LOG_TAG, "Set file Format JPEG");
+			m_scanSetting.setFileFormat(0); // jpeg
+		} else {
+			Log.i(LOG_TAG, "Set file Format PDF");
+			m_scanSetting.setFileFormat(1); // pdf
+		}
+		//m_scanSetting.setFileFormat(FILE_FORMAT);
+
 		m_scanSetting.setSaveFolderPath(OUTPUT_PATH); // Set image destination path
+		
+		// get the input param
+		Log.v (LOG_TAG, "Scan args : " + args.toString());
+
+		status = "";
+		try {
+			status = args.getString("multipages");
+		} catch (Exception e) {
+			Log.e(LOG_TAG, "Unable to get params in Scan function");
+		}
+
+		Log.v (LOG_TAG, "Scan status Param : " + status);
 
 		if (status.equals("double")){ // set recto/verso
 			Log.v (LOG_TAG, "DOUBLE PAGE active : " + status);
 			m_scanSetting.setMultiFeed(1);
+		} else {
+			Log.v (LOG_TAG, "DOUBLE PAGE NOT active : " + status);
 		}
 		// Get the connected device
 		device = (PFUSSDevice)pfuDeviceManager.getConnectedDevice();
@@ -240,9 +302,14 @@ public class Hello extends CordovaPlugin {
 
 	// Handler for received Intents
 	class MyBroadcastReceiver extends BroadcastReceiver {
-		private Hello hello = new Hello();
+		private JSONObject args = null; // get args
+
 	    private static final String LOG_TAG = "SnapScanPlugin/MyBroadcastReceiver";
 
+	    // constructor
+	    public MyBroadcastReceiver(JSONObject args){
+	    	this.args = args;
+	    }
 		public void onReceive(Context context, Intent intent) {
 			// Add here any other event handlers
 			// ACTION_PFU_LIST_OF_DEVICES_DID_CHANGE event received
@@ -266,10 +333,10 @@ public class Hello extends CordovaPlugin {
     			callbackContext.sendPluginResult(result);*/
 
     			// directly scan action ?
-    			Scan("single");
+    			Scan(args);
 
 			}
-			// callback for finish scan action 
+			// callback for finish scan action
 			// PDF
 			if(intent.getAction().equals(SSNotification.ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF)) {
 			  	// Get the pdf path
@@ -277,11 +344,21 @@ public class Hello extends CordovaPlugin {
 				Log.v(LOG_TAG, "Scan:: scan in pdf is finish, path of file :");
 				Log.v(LOG_TAG, pdfPath);
 			  	
-			  	// test the send the broadcast end scan
-				PluginResult result = new PluginResult(PluginResult.Status.OK, pdfPath);
-    			result.setKeepCallback(false);
-    			callbackContext.sendPluginResult(result);
-
+				// fire callback if param is pdf
+				String status = "";
+				try {
+					status = args.getString("type");
+				} catch (Exception e) {
+					Log.e(LOG_TAG, "Unable to get params in ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF");
+				}
+				// check if send
+				if (status.equals("pdf")){ // set recto/verso
+					Log.v (LOG_TAG, "BROADCAST : PDF FORMAT" + status);
+				  	// only for the pdf result test the send the broadcast end scan
+					PluginResult result = new PluginResult(PluginResult.Status.OK, pdfPath);
+	    			result.setKeepCallback(false);
+	    			callbackContext.sendPluginResult(result);
+				}
 
 			}
 			// JPEG
@@ -296,28 +373,33 @@ public class Hello extends CordovaPlugin {
 				Log.v(LOG_TAG, "Scan:: frontJPEGPath : "+frontJPEGPath);
 				Log.v(LOG_TAG, "Scan:: backJPEGPath : "+backJPEGPath);
 
+				// prepare return object
 			  	JSONObject returnObject = new JSONObject();
 			  	try { // wanted.
 					returnObject.put("frontPage", frontJPEGPath);
 					returnObject.put("backPage", backJPEGPath);
 				} catch (JSONException e) {
-					Log.v(LOG_TAG, "SCAN : JSON EXCEPTION");
-				    // TODO Auto-generated catch block
+					Log.v(LOG_TAG, "SCAN : JSON CREATE OBJECT EXCEPTION");
 				    e.printStackTrace();
 				}
-
-				Log.v(LOG_TAG, "Scan:: scan in JPEG is finish, jsonobject for callback :");
-				Log.v(LOG_TAG, returnObject.toString());
 				
-				// return final object with filesPath
-				PluginResult result = new PluginResult(PluginResult.Status.OK, returnObject);
-    			result.setKeepCallback(false);
-    			callbackContext.sendPluginResult(result);
+				// fire callback if param is jpeg
+				String status = "";
+				try {
+					status = args.getString("type");
+				} catch (Exception e) {
+					Log.e(LOG_TAG, "Unable to get params in ACTION_SS_DEVICE_DID_FINISH_MAKE_PDF");
+				}
+				// check if send
+				if (status.equals("jpeg") || status.equals("jpg")){ // set recto/verso
+					Log.v (LOG_TAG, "BROADCAST : JPEG FORMAT" + status);
+					// return final object with filesPath
+					PluginResult result = new PluginResult(PluginResult.Status.OK, returnObject);
+	    			result.setKeepCallback(false);
+	    			callbackContext.sendPluginResult(result);
+				}
 
-				// return the two url of pages in a calback (json object)
-				//callbackContext.success("Connected to " +device.getDeviceName().toString());
 
-			  	//hello.createCallback(returnObject.toString() , true, true);
 
 			}
 
